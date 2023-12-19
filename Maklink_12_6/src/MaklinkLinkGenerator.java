@@ -8,6 +8,7 @@ import java.util.Set;
 public class MaklinkLinkGenerator {
     private static List<LinkLine> linkLines = new ArrayList<>();        //所有连接线合集
 
+
     public static Obstacle createObstacle(List<Point> vertices) {
         return new Obstacle(vertices);
     }
