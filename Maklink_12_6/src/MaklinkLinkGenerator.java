@@ -12,6 +12,12 @@ public class MaklinkLinkGenerator {
         return new Obstacle(vertices);
     }
 
+    /**
+     * 生成各障碍物顶点之间的MakLink线
+     *
+     * @param obstacles 障碍物合集
+     * @param linkLines 所有MakLink线合集
+     */
     public static void generateLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
         Set<LinkLine> uniqueLinkLines = new HashSet<>();
 
@@ -35,101 +41,206 @@ public class MaklinkLinkGenerator {
         linkLines.addAll(uniqueLinkLines);
     }
 
+    /**
+     * 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
+     *
+     * @param obstacles 障碍物合集
+     * @param linkLines 所有MakLink线合集
+     */
     public static void generateMapLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
         // 定义地图边界的顶点
         Point mapVertex1 = new Point(0, 0);
         Point mapVertex2 = new Point(200, 0);
         Point mapVertex3 = new Point(200, 200);
         Point mapVertex4 = new Point(0, 200);
+        //创建地图边界顶点集合
+        List<Point> boundaryVertices = new ArrayList<>();
+        boundaryVertices.add(mapVertex1);
+        boundaryVertices.add(mapVertex2);
+        boundaryVertices.add(mapVertex3);
+        boundaryVertices.add(mapVertex4);
 
+        //获取最大凸多边形障碍物顶点集合
+        List<Point> mergeConvexPolygons = mergeConvexPolygons(obstacles);
+
+        for (Point vertex : mergeConvexPolygons) {
+            // 获取距离已知顶点最近的地图边界点
+            Point nearestBoundaryPoint = getNearestBoundaryPoint(vertex, boundaryVertices);
+            // 生成与地图上边界的连线
+            LinkLine topLinkLine = new LinkLine(vertex, nearestBoundaryPoint);
+            linkLines.add(topLinkLine);
+        }
+    }
+
+    /**
+     * 要求该集合的顶点组成一个凸多边形并且包围所有的障碍物
+     *
+     * @param obstacles 障碍物合集
+     * @return 障碍物的顶点集合
+     */
+    public static List<Point> mergeConvexPolygons(List<Obstacle> obstacles) {
+        List<Point> mergedPoints = new ArrayList<>();
         for (Obstacle obstacle : obstacles) {
-            List<Point> vertices = obstacle.getVertices();
-
-            for (Point vertex : vertices) {
-                // 生成与地图上边界的连线
-                LinkLine topLinkLine = new LinkLine(vertex, new Point(vertex.getX(), mapVertex1.getY()));
-                linkLines.add(topLinkLine);
-
-                // 生成与地图下边界的连线
-                LinkLine bottomLinkLine = new LinkLine(vertex, new Point(vertex.getX(), mapVertex3.getY()));
-                linkLines.add(bottomLinkLine);
-
-                // 生成与地图左边界的连线
-                LinkLine leftLinkLine = new LinkLine(vertex, new Point(mapVertex4.getX(), vertex.getY()));
-                linkLines.add(leftLinkLine);
-
-                // 生成与地图右边界的连线
-                LinkLine rightLinkLine = new LinkLine(vertex, new Point(mapVertex2.getX(), vertex.getY()));
-                linkLines.add(rightLinkLine);
-            }
+            mergedPoints.addAll(obstacle.getVertices());
         }
+        //凸包算法来计算给定点集的凸多边形
+        List<Point> convexHull = computeConvexHull(mergedPoints);
+        return convexHull;
     }
 
-    public static void printLinkLines(List<LinkLine> linkLines) {
-        for (LinkLine linkLine : linkLines) {
-//            System.out.println("Link Line: " + "("+linkLine.getStartPoint().getX()+","+ linkLine.getStartPoint().getY()+")" + " -> " + "("+linkLine.getEndPoint().getX()+","+ linkLine.getEndPoint().getY()+")");
-            System.out.println(linkLine.getStartPoint().getX() + " " + linkLine.getStartPoint().getY() + "\n" + linkLine.getEndPoint().getX() + " " + linkLine.getEndPoint().getY());
+    public static List<Point> computeConvexHull(List<Point> points) {
+        int n = points.size();
+        if (n < 3) {
+            return new ArrayList<>(points);
         }
-    }
 
-    public static List<LinkLine> removeDuplicateLinkLines(List<LinkLine> linkLines) {
-        Set<Pair<Point, Point>> pointPairs = new HashSet<>();
-        List<LinkLine> uniqueLinkLines = new ArrayList<>();
-
-        for (LinkLine linkLine : linkLines) {
-            Pair<Point, Point> pointPair = new Pair<>(linkLine.getStartPoint(), linkLine.getEndPoint());
-
-            if (!pointPairs.contains(pointPair)) {
-                pointPairs.add(pointPair);
-                uniqueLinkLines.add(linkLine);
+        // 找到最左边的点
+        int leftmost = 0;
+        for (int i = 1; i < n; i++) {
+            if (points.get(i).getX() < points.get(leftmost).getX()) {
+                leftmost = i;
             }
         }
 
-        return uniqueLinkLines;
+        List<Point> hull = new ArrayList<>();
+        int p = leftmost;
+        int q;
+        do {
+            hull.add(points.get(p));
+            q = (p + 1) % n;
+            for (int i = 0; i < n; i++) {
+                if (isCounterClockwise(points.get(p), points.get(i), points.get(q))) {
+                    q = i;
+                }
+            }
+            p = q;
+        } while (p != leftmost);
+
+        return hull;
     }
-    //1
+
+    public static boolean isCounterClockwise(Point p0, Point p1, Point p2) {
+        double crossProduct = crossProduct(p0, p1, p2);
+        return crossProduct > 0;
+    }
+
+    public static double crossProduct(Point p0, Point p1, Point p2) {
+        double x1 = p1.getX() - p0.getX();
+        double y1 = p1.getY() - p0.getY();
+        double x2 = p2.getX() - p0.getX();
+        double y2 = p2.getY() - p0.getY();
+        return x1 * y2 - x2 * y1;
+    }
+
+    /**
+     * 计算已知顶点到地图边界的水平和垂直线与边界相交的四个点，并返回其中距离最短的点
+     *
+     * @param vertex           地图中已知顶点
+     * @param boundaryVertices 围成地图的顶点集合
+     * @return 到已知顶点垂直距离最短的点
+     */
+    public static Point getNearestBoundaryPoint(Point vertex, List<Point> boundaryVertices) {
+        if (boundaryVertices.isEmpty()) {
+            return null;
+        }
+
+        Point nearestBoundaryPoint = null;
+        double minDistance = Double.MAX_VALUE;
+
+        // 计算水平线和垂直线与边界相交的四个点
+        Point horizontalIntersectionTop = new Point(vertex.getX(), 200);
+        Point horizontalIntersectionBottom = new Point(vertex.getX(), 0);
+        Point verticalIntersectionLeft = new Point(0, vertex.getY());
+        Point verticalIntersectionRight = new Point(200, vertex.getY());
+
+        // 计算四个相交点到已知顶点的距离，并找到最小距离的点
+        for (Point boundaryVertex : boundaryVertices) {
+            double distance = Math.sqrt(Math.pow(boundaryVertex.getX() - vertex.getX(), 2) +
+                    Math.pow(boundaryVertex.getY() - vertex.getY(), 2));
+            if (distance < minDistance) {
+                minDistance = distance;
+                nearestBoundaryPoint = boundaryVertex;
+            }
+        }
+
+        // 比较水平线和垂直线与边界相交的点的距离，并更新最小距离的点
+        double horizontalTopDistance = Math.sqrt(Math.pow(horizontalIntersectionTop.getX() - vertex.getX(), 2) +
+                Math.pow(horizontalIntersectionTop.getY() - vertex.getY(), 2));
+        double horizontalBottomDistance = Math.sqrt(Math.pow(horizontalIntersectionBottom.getX() - vertex.getX(), 2) +
+                Math.pow(horizontalIntersectionBottom.getY() - vertex.getY(), 2));
+        double verticalLeftDistance = Math.sqrt(Math.pow(verticalIntersectionLeft.getX() - vertex.getX(), 2) +
+                Math.pow(verticalIntersectionLeft.getY() - vertex.getY(), 2));
+        double verticalRightDistance = Math.sqrt(Math.pow(verticalIntersectionRight.getX() - vertex.getX(), 2) +
+                Math.pow(verticalIntersectionRight.getY() - vertex.getY(), 2));
+
+        if (horizontalTopDistance < minDistance) {
+            minDistance = horizontalTopDistance;
+            nearestBoundaryPoint = horizontalIntersectionTop;
+        }
+
+        if (horizontalBottomDistance < minDistance) {
+            minDistance = horizontalBottomDistance;
+            nearestBoundaryPoint = horizontalIntersectionBottom;
+        }
+
+        if (verticalLeftDistance < minDistance) {
+            minDistance = verticalLeftDistance;
+            nearestBoundaryPoint = verticalIntersectionLeft;
+        }
+
+        if (verticalRightDistance < minDistance) {
+            nearestBoundaryPoint = verticalIntersectionRight;
+        }
+
+        return nearestBoundaryPoint;
+    }
+
+    /**
+     * 生成不经过障碍物的MakLink线
+     *
+     * @param obstacles 障碍物集合
+     * @param linkLines 未去除经过障碍物的MakLink线集合
+     * @return
+     */
     public static List<LinkLine> removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
         List<LinkLine> disjointLinkLines = new ArrayList<>();
 
         //遍历链接线
         for (LinkLine linkLine : linkLines) {
-            Point p1 = linkLine.getStartPoint();
-            Point q1 = linkLine.getEndPoint();
-            boolean flag = true;
+            Point p1 = linkLine.getStartPoint();//链接线起点
+            Point q1 = linkLine.getEndPoint();//链接线终点
+            boolean flag = true;//默认不经过障碍物
             //遍历障碍物检查链接线是否经过障碍物边缘
             for (Obstacle obstacle : obstacles) {
-
                 //获取一个障碍物两两顶点组成的顶点集合
                 List<List<Point>> vertexPairs = obstacle.getVertexPairs();
                 //遍历障碍物两两顶点组成的顶点集合
                 for (List<Point> list : vertexPairs) {
                     Point p2 = list.get(0);
                     Point q2 = list.get(1);
-                    // 检查(p2, q2)是否在链接线(p1, q1)端点之间
+                    // 检查端点p2, q2是否在链接线(p1, q1)端点之间
                     if (isPointOnLineSegment(p1, q1, p2) || isPointOnLineSegment(p1, q1, q2)) {
                         flag = false;
                         break;
                     }
                 }
-                //相交直接退出检查
-                if (!flag) {
+                if (!flag) {//端点p2, q2在链接线(p1, q1)端点之间直接退出循环
                     break;
                 }
 
-                //获取障碍物边缘线段两两组成的顶点列表
+                //获取障碍物边缘线段组成的顶点列表
                 List<List<Point>> polygonEdges = obstacle.getPolygonEdges();
                 //遍历障碍物边缘
                 for (List<Point> list : polygonEdges) {
-                    Point p2 = list.get(0);
-                    Point q2 = list.get(1);
-                    // 检查链接线(p1, q1)和障碍物边缘(p2, q2)是否相交
-                    if (areSegmentsIntersecting(p1, q1, p2, q2)) {
+                    Point p3 = list.get(0);
+                    Point q3 = list.get(1);
+                    // 检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交
+                    if (areSegmentsIntersecting(p1, q1, p3, q3)) {
                         flag = false;
                         break;
                     }
                 }
-                //相交直接退出检查
-                if (!flag) {
+                if (!flag) { //相交直接退出检查
                     break;
                 }
             }
@@ -144,6 +255,8 @@ public class MaklinkLinkGenerator {
     }
 
     /**
+     * 检查线段(p1, p2)和线段(p3, p4)是否相交
+     *
      * @param p1 链接线端点
      * @param p2 链接线端点
      * @param p3 障碍物端点
@@ -151,40 +264,24 @@ public class MaklinkLinkGenerator {
      * @return
      */
     static boolean areSegmentsIntersecting(Point p1, Point p2, Point p3, Point p4) {
+        //获取MakLink线端点坐标值
         double x1 = p1.getX();
         double y1 = p1.getY();
         double x2 = p2.getX();
         double y2 = p2.getY();
-
+        //获取障碍物边缘端点坐标值
         double x3 = p3.getX();
         double y3 = p3.getY();
         double x4 = p4.getX();
         double y4 = p4.getY();
 
         double denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-        // 检查分母是否为0，表示线段平行或重叠
-        if (denominator == 0) {
-//            // 判断是否重叠
-//            double minXp = Math.min(x1, x2);
-//            double maxXp = Math.max(x1, x2);
-//            double minYp = Math.min(y1, y2);
-//            double maxYp = Math.max(y1, y2);
-//
-//            double minXq = Math.min(x3, x4);
-//            double maxXq = Math.max(x3, x4);
-//            double minYq = Math.min(y3, y4);
-//            double maxYq = Math.max(y3, y4);
-
-//            if (maxXp < minXq || minXp > maxXq || maxYp < minYq || minYp > maxYq) {
-//                // 如果两条线段的边界没有相交，则为不重叠
-//                return false;
-//            }
-
+        // 检查分母是否为0
+        if (denominator == 0) {//表示线段平行或重叠即MakLink线和障碍物边缘斜率相等
             if (isPointOnLineSegment(p1, p2, p3) || isPointOnLineSegment(p1, p2, p4)) {
-                //如果障碍物端点在MakLink线段的两个端点之间
+                //如果障碍物边缘线段的一个端点在MakLink线段的两个端点之间
                 return true;
             }
-
         }
 
         double intersectX = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denominator;
@@ -207,7 +304,7 @@ public class MaklinkLinkGenerator {
 
 
     /**
-     * 判断障碍物端点是否在MakLink线段的两个端点之间
+     * 判断点p3是否在线段(p1,p2)的两个端点之间
      *
      * @param p1 MakLink线段起点
      * @param p2 MakLink线段终点
@@ -245,6 +342,13 @@ public class MaklinkLinkGenerator {
         }
 
         return true;
+    }
+
+    public static void printLinkLines(List<LinkLine> linkLines) {
+        for (LinkLine linkLine : linkLines) {
+//            System.out.println("Link Line: " + "("+linkLine.getStartPoint().getX()+","+ linkLine.getStartPoint().getY()+")" + " -> " + "("+linkLine.getEndPoint().getX()+","+ linkLine.getEndPoint().getY()+")");
+            System.out.println(linkLine.getStartPoint().getX() + " " + linkLine.getStartPoint().getY() + "\n" + linkLine.getEndPoint().getX() + " " + linkLine.getEndPoint().getY());
+        }
     }
 
     public static void main(String[] args) {
@@ -286,8 +390,7 @@ public class MaklinkLinkGenerator {
         obstacles.add(obstacleFour);     //加入合集
 
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
-//        generateMapLinkLines(obstacles, linkLines);   // 生成合障碍物顶点与地图边界之间的最短连线
-//        removeDuplicateLinkLines(linkLines);
+        generateMapLinkLines(obstacles, linkLines);   // 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
         List<LinkLine> linkLines1 = removeIntersectLinkLines(obstacles, linkLines); // 生成不经过障碍物的MakLink线
         printLinkLines(linkLines1);
     }
