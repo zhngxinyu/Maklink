@@ -87,7 +87,7 @@ public class MaklinkLinkGenerator {
 
         return uniqueLinkLines;
     }
-
+    //1
     public static List<LinkLine> removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
         List<LinkLine> disjointLinkLines = new ArrayList<>();
 
