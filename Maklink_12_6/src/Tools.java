@@ -131,6 +131,7 @@ public class Tools {
 
         return nearestBoundaryPoint;
     }
+
     /**
      * 判断点p3是否在线段(p1,p2)的两个端点之间
      *
@@ -140,20 +141,21 @@ public class Tools {
      * @return
      */
     static boolean isPointOnLineSegment(Point p1, Point p2, Point p3) {
-        // 计算向量
+        //获取点p1和点p2的坐标值
         double x1 = p1.getX();
         double y1 = p1.getY();
         double x2 = p2.getX();
         double y2 = p2.getY();
 
+        //获取点p3的坐标值
         double px = p3.getX();
         double py = p3.getY();
 
 
         double crossProduct = (px - x1) * (y2 - y1) - (py - y1) * (x2 - x1);
 
-        if (Math.abs(crossProduct) > 0.000001) {
-            // 如果点不在直线上
+        if (Math.abs(crossProduct) != 0) {
+            // 如果叉积的绝对值不等于0，则表明点p3不在直线上，
             return false;
         }
 
@@ -165,7 +167,7 @@ public class Tools {
         double dotProduct = (px - x1) * (x2 - x1) + (py - y1) * (y2 - y1);
 
         if (dotProduct < 0 || dotProduct > (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1)) {
-            // 如果点在线段的延长线上或不在线段的两个端点之间
+            //如果点积小于0或大于线段长度的平方，则表明点p3在线段的延长线上
             return false;
         }
 
@@ -202,19 +204,17 @@ public class Tools {
             }
         }
 
+        //如果分母不为0，计算交点的坐标intersectX和intersectY
         double intersectX = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denominator;
         double intersectY = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denominator;
 
-        // 检查交点是否在两条线段上
-        if (intersectX >= Math.min(x1, x2) && intersectX <= Math.max(x1, x2) &&
-                intersectX >= Math.min(x3, x4) && intersectX <= Math.max(x3, x4) &&
-                intersectY >= Math.min(y1, y2) && intersectY <= Math.max(y1, y2) &&
-                intersectY >= Math.min(y3, y4) && intersectY <= Math.max(y3, y4)) {
-            // 检查交点是否是所选线和障碍物边缘的点
-            if ((intersectX != x1 || intersectY != y1) && (intersectX != x2 || intersectY != y2) &&
-                    (intersectX != x3 || intersectY != y3) && (intersectX != x4 || intersectY != y4)) {
-                return true;
-            }
+        // 检查交点的坐标是否在两条线段的范围内
+        if (intersectX > Math.min(x1, x2) && intersectX < Math.max(x1, x2) &&
+                intersectX > Math.min(x3, x4) && intersectX < Math.max(x3, x4) &&
+                intersectY > Math.min(y1, y2) && intersectY < Math.max(y1, y2) &&
+                intersectY > Math.min(y3, y4) && intersectY < Math.max(y3, y4)) {
+            //如果交点不在任一线段的端点上，表示线段(p1, p2)和(p3, p4)相交，
+            return true;
         }
 
         return false;

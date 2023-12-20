@@ -70,7 +70,6 @@ public class MaklinkLinkGenerator {
     }
 
 
-
     /**
      * 将Link线合集中经过障碍物的删除
      *
@@ -78,56 +77,46 @@ public class MaklinkLinkGenerator {
      * @param linkLines MakLink线集合
      * @return
      */
-    public static List<LinkLine> removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
-        List<LinkLine> disjointLinkLines = new ArrayList<>();
+    public static void removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
+        Iterator<LinkLine> iterator = linkLines.iterator();
 
-        //遍历链接线
-        for (LinkLine linkLine : linkLines) {
-            Point p1 = linkLine.getStartPoint();//链接线起点
-            Point q1 = linkLine.getEndPoint();//链接线终点
-            boolean flag = true;//默认不经过障碍物
-            //遍历障碍物检查链接线是否经过障碍物边缘
+        //遍历linkLines列表中的每条链接线linkLine
+        while (iterator.hasNext()) {
+            LinkLine linkLine = iterator.next();
+            //获取链接线的起点p1和终点q1。
+            Point p1 = linkLine.getStartPoint();
+            Point q1 = linkLine.getEndPoint();
+            //设置一个布尔标志flag，用于指示链接线是否经过障碍物。
+            boolean flag = false;//默认不经过障碍物
+
+            //遍历obstacles列表中的每个障碍物obstacle
             for (Obstacle obstacle : obstacles) {
-                //获取一个障碍物两两顶点组成的顶点集合
+                //获取障碍物的两两顶点组成的顶点集合vertexPairs。
                 List<List<Point>> vertexPairs = obstacle.getVertexPairs();
-                //遍历障碍物两两顶点组成的顶点集合
-                for (List<Point> list : vertexPairs) {
-                    Point p2 = list.get(0);
-                    Point q2 = list.get(1);
-                    // 检查端点p2, q2是否在链接线(p1, q1)端点之间
-                    if (tools.isPointOnLineSegment(p1, q1, p2) || tools.isPointOnLineSegment(p1, q1, q2)) {
-                        flag = false;
-                        break;
-                    }
-                }
-                if (!flag) {//端点p2, q2在链接线(p1, q1)端点之间直接退出循环
-                    break;
-                }
 
-                //获取障碍物边缘线段组成的顶点列表
-                List<List<Point>> polygonEdges = obstacle.getPolygonEdges();
-                //遍历障碍物边缘
-                for (List<Point> list : polygonEdges) {
+                for (List<Point> list : vertexPairs) {
+                    //两个顶点p3和q3，表示障碍物的一条边缘线段。
                     Point p3 = list.get(0);
                     Point q3 = list.get(1);
-                    // 检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交
+
+                    //检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交，
                     if (tools.areSegmentsIntersecting(p1, q1, p3, q3)) {
-                        flag = false;
+                        flag = true;
                         break;
                     }
                 }
-                if (!flag) { //相交直接退出检查
+
+                if (flag) {
+                    //如果标志flag为true，则表示链接线与障碍物边缘相交，直接退出循环。
                     break;
                 }
             }
 
             if (flag) {
-                //符合，加入disjointLinkLines集合
-                disjointLinkLines.add(linkLine);
+                //如果标志flag为true，则从linkLines列表中移除当前的链接线linkLine。
+                iterator.remove();
             }
         }
-
-        return disjointLinkLines;
     }
 
     /**
@@ -225,13 +214,16 @@ public class MaklinkLinkGenerator {
 
     public static void main(String[] args) {
         List<Obstacle> obstacles = new ArrayList<>();   //障碍物合集
-
         // 多边形障碍物的顶点列表-->菱形1
         List<Point> obstaclePoints1 = new ArrayList<>();
         obstaclePoints1.add(new Point(40, 140));
         obstaclePoints1.add(new Point(60, 160));
         obstaclePoints1.add(new Point(100, 140));
         obstaclePoints1.add(new Point(60, 120));
+//        obstaclePoints1.add(new Point(40, 40));
+//        obstaclePoints1.add(new Point(60, 60));
+//        obstaclePoints1.add(new Point(60, 60));
+//        obstaclePoints1.add(new Point(60, 40));
         Obstacle obstacleOne = createObstacle(obstaclePoints1);
         obstacles.add(obstacleOne);     //加入合集
 
@@ -241,31 +233,42 @@ public class MaklinkLinkGenerator {
         obstaclePoints2.add(new Point(30, 40));
         obstaclePoints2.add(new Point(80, 80));
         obstaclePoints2.add(new Point(100, 40));
+//        obstaclePoints2.add(new Point(100, 30));
+//        obstaclePoints2.add(new Point(80, 50));
+//        obstaclePoints2.add(new Point(140, 80));
+//        obstaclePoints2.add(new Point(160, 60));
         Obstacle obstacleTwo = createObstacle(obstaclePoints2);
         obstacles.add(obstacleTwo);     //加入合集
 
-//        // 多边形障碍物的顶点列表-->菱形3
-//        List<Point> obstaclePoints3 = new ArrayList<>();
-//        obstaclePoints3.add(new Point(120, 160));
-//        obstaclePoints3.add(new Point(140, 100));
-//        obstaclePoints3.add(new Point(180, 170));
-//        obstaclePoints3.add(new Point(165, 180));
-//        Obstacle obstacleThree = createObstacle(obstaclePoints3);
-//        obstacles.add(obstacleThree);     //加入合集
-//
-//        // 多边形障碍物的顶点列表-->三角形
-//        List<Point> obstaclePoints4 = new ArrayList<>();
-//        obstaclePoints4.add(new Point(120, 40));
-//        obstaclePoints4.add(new Point(170, 40));
-//        obstaclePoints4.add(new Point(140, 80));
-//        Obstacle obstacleFour = createObstacle(obstaclePoints4);
-//        obstacles.add(obstacleFour);     //加入合集
+        // 多边形障碍物的顶点列表-->菱形3
+        List<Point> obstaclePoints3 = new ArrayList<>();
+        obstaclePoints3.add(new Point(120, 160));
+        obstaclePoints3.add(new Point(140, 100));
+        obstaclePoints3.add(new Point(180, 170));
+        obstaclePoints3.add(new Point(165, 180));
+//        obstaclePoints3.add(new Point(50, 80));
+//        obstaclePoints3.add(new Point(40, 100));
+//        obstaclePoints3.add(new Point(50, 120));
+//        obstaclePoints3.add(new Point(60, 100));
+        Obstacle obstacleThree = createObstacle(obstaclePoints3);
+        obstacles.add(obstacleThree);     //加入合集
+
+        // 多边形障碍物的顶点列表-->三角形
+        List<Point> obstaclePoints4 = new ArrayList<>();
+        obstaclePoints4.add(new Point(120, 40));
+        obstaclePoints4.add(new Point(170, 40));
+        obstaclePoints4.add(new Point(140, 80));
+//        obstaclePoints4.add(new Point(110, 100));
+//        obstaclePoints4.add(new Point(130, 140));
+//        obstaclePoints4.add(new Point(160, 100));
+        Obstacle obstacleFour = createObstacle(obstaclePoints4);
+        obstacles.add(obstacleFour);     //加入合集
 
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
         generateMapLinkLines(obstacles, linkLines);   // 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
-        List<LinkLine> linkLines1 = removeIntersectLinkLines(obstacles, linkLines); // 生成不经过障碍物的Link线
-        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
-//        printLinkLines(finalLinkLines);
+        removeIntersectLinkLines(obstacles, linkLines); // 将Link线合集中经过障碍物的删除
+//        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
+        tools.printLinkLines(linkLines);
     }
 
 
