@@ -5,6 +5,7 @@ public class MaklinkLinkGenerator {
 
     private static Tools tools;     //引入工具类
 
+    private static int test;     //引入工具类
     public static Obstacle createObstacle(List<Point> vertices) {
         return new Obstacle(vertices);
     }
