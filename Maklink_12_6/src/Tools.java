@@ -1,7 +1,57 @@
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Tools {
+
+    /**
+     * 将Link线合集中经过障碍物的删除
+     *
+     * @param obstacles 障碍物集合
+     * @param linkLines MakLink线集合
+     * @return
+     */
+    public static List<LinkLine> removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
+        Iterator<LinkLine> iterator = linkLines.iterator();
+
+        //遍历linkLines列表中的每条链接线linkLine
+        while (iterator.hasNext()) {
+            LinkLine linkLine = iterator.next();
+            //获取链接线的起点p1和终点q1。
+            Point p1 = linkLine.getStartPoint();
+            Point q1 = linkLine.getEndPoint();
+            //设置一个布尔标志flag，用于指示链接线是否经过障碍物。
+            boolean flag = false;//默认不经过障碍物
+
+            //遍历obstacles列表中的每个障碍物obstacle
+            for (Obstacle obstacle : obstacles) {
+                //获取障碍物的两两顶点组成的顶点集合vertexPairs。
+                List<List<Point>> vertexPairs = obstacle.getVertexPairs();
+
+                for (List<Point> list : vertexPairs) {
+                    //两个顶点p3和q3，表示障碍物的一条边缘线段。
+                    Point p3 = list.get(0);
+                    Point q3 = list.get(1);
+
+                    //检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交，
+                    if (areSegmentsIntersecting(p1, q1, p3, q3)) {
+                        flag = true;
+                        break;
+                    }
+                }
+
+                if (flag) {
+                    //如果标志flag为true，则表示链接线与障碍物边缘相交，直接退出循环。
+                    break;
+                }
+            }
+
+            if (flag) {
+                //如果标志flag为true，则从linkLines列表中移除当前的链接线linkLine。
+                iterator.remove();
+            }
+        }
+        return linkLines;
+    }
+
     public static void printLinkLines(List<LinkLine> linkLines) {
         for (LinkLine linkLine : linkLines) {
 //            System.out.println("Link Line: " + "("+linkLine.getStartPoint().getX()+","+ linkLine.getStartPoint().getY()+")" + " -> " + "("+linkLine.getEndPoint().getX()+","+ linkLine.getEndPoint().getY()+")");
@@ -10,7 +60,7 @@ public class Tools {
     }
 
     /**
-     * 要求该集合的顶点组成一个凸多边形并且包围所有的障碍物
+     * 获取最大凸多边形障碍物顶点集合
      *
      * @param obstacles 障碍物合集
      * @return 障碍物的顶点集合
@@ -207,16 +257,79 @@ public class Tools {
         //如果分母不为0，计算交点的坐标intersectX和intersectY
         double intersectX = ((x1 * y2 - y1 * x2) * (x3 - x4) - (x1 - x2) * (x3 * y4 - y3 * x4)) / denominator;
         double intersectY = ((x1 * y2 - y1 * x2) * (y3 - y4) - (y1 - y2) * (x3 * y4 - y3 * x4)) / denominator;
+        Point intersect = new Point(intersectX, intersectY);
 
-        // 检查交点的坐标是否在两条线段的范围内
-        if (intersectX > Math.min(x1, x2) && intersectX < Math.max(x1, x2) &&
-                intersectX > Math.min(x3, x4) && intersectX < Math.max(x3, x4) &&
-                intersectY > Math.min(y1, y2) && intersectY < Math.max(y1, y2) &&
-                intersectY > Math.min(y3, y4) && intersectY < Math.max(y3, y4)) {
-            //如果交点不在任一线段的端点上，表示线段(p1, p2)和(p3, p4)相交，
-            return true;
+        // 检查交点是否在两条线段上
+        if (intersectX >= Math.min(x1, x2) && intersectX <= Math.max(x1, x2) &&
+                intersectX >= Math.min(x3, x4) && intersectX <= Math.max(x3, x4) &&
+                intersectY >= Math.min(y1, y2) && intersectY <= Math.max(y1, y2) &&
+                intersectY >= Math.min(y3, y4) && intersectY <= Math.max(y3, y4)) {
+            // 检查交点是否是所选线和障碍物边缘的点
+            if ((intersectX != x1 || intersectY != y1) && (intersectX != x2 || intersectY != y2) &&
+                    (intersectX != x3 || intersectY != y3) && (intersectX != x4 || intersectY != y4)) {
+                return true;
+            }
         }
-
         return false;
     }
+
+    /**
+     * 获取障碍物顶点围成的边缘线段集合
+     *
+     * @param mergeConvexPolygons
+     * @return
+     */
+    public static List<EdgeLine> generateEdgeLines(List<Point> mergeConvexPolygons) {
+        List<EdgeLine> edgeLines = new ArrayList<>();
+
+        int numVertices = mergeConvexPolygons.size();
+        for (int i = 0; i < numVertices; i++) {
+            Point currentPoint = mergeConvexPolygons.get(i);
+            Point nextPoint = mergeConvexPolygons.get((i + 1) % numVertices);
+
+            EdgeLine edgeLine = new EdgeLine(currentPoint, nextPoint);
+            edgeLines.add(edgeLine);
+        }
+
+        return edgeLines;
+    }
+
+    /**
+     * 检查由当前链接线连接产生的当前顶点的外角
+     *
+     * @param linkLine  链接线
+     * @param edgeLine1 顶点所在的障碍物边缘
+     * @param edgeLine2 顶点所在的障碍物边缘
+     * @return 如果两个角度中的每一个都小于180度返回true
+     */
+    public static boolean areVertexAnglesLessThan180(LinkLine linkLine, EdgeLine edgeLine1, EdgeLine edgeLine2) {
+        // 获取linkLine的向量表示
+        double vectorX = linkLine.getEndPoint().getX() - linkLine.getStartPoint().getX();
+        double vectorY = linkLine.getEndPoint().getY() - linkLine.getStartPoint().getY();
+        // 获取edgeLine1的向量表示
+        double vector1X = edgeLine1.getEndPoint().getX() - edgeLine1.getStartPoint().getX();
+        double vector1Y = edgeLine1.getEndPoint().getY() - edgeLine1.getStartPoint().getY();
+
+        // 获取edgeLine2的向量表示
+        double vector2X = edgeLine2.getEndPoint().getX() - edgeLine2.getStartPoint().getX();
+        double vector2Y = edgeLine2.getEndPoint().getY() - edgeLine2.getStartPoint().getY();
+
+        // 计算linkLine和edgeLine1，edgeLine2之间的夹角（弧度）
+        double angle = Math.atan2(vectorY, vectorX);
+        double angle1 = Math.atan2(vector1Y, vector1X);
+        double angle2 = Math.atan2(vector2Y, vector2X);
+
+        // 将角度转换为正值
+        angle = angle >= 0 ? angle : (2 * Math.PI + angle);
+        angle1 = angle1 >= 0 ? angle1 : (2 * Math.PI + angle1);
+        angle2 = angle2 >= 0 ? angle2 : (2 * Math.PI + angle2);
+
+        // 计算两个外角的夹角（弧度）
+        double angleDifference1 = Math.abs(angle - angle1);
+        double angleDifference2 = Math.abs(angle - angle2);
+
+        // 判断夹角是否小于180度
+        return angleDifference1 < Math.PI && angleDifference2 < Math.PI;
+    }
+
 }

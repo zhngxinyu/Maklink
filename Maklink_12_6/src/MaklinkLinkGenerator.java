@@ -34,90 +34,102 @@ public class MaklinkLinkGenerator {
                 }
             }
         }
+        List<LinkLine> lines = new ArrayList<>();
+        lines.addAll(uniqueLinkLines);
+        List<LinkLine> removeIntersectLinkLines = tools.removeIntersectLinkLines(obstacles, lines);  //去除经过障碍物的链接线
 
-        linkLines.addAll(uniqueLinkLines);
+//        linkLines.addAll(uniqueLinkLines);//初始链接线
+        linkLines.addAll(removeIntersectLinkLines);//去除经过障碍物后的链接线
     }
 
     /**
-     * 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
+     * 生成障碍物外围顶点与地图边界之间的最佳MakLink线
      *
      * @param obstacles 障碍物合集
      * @param linkLines 所有MakLink线合集
+     * @param map       地图边界
      */
-    public static void generateMapLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
-        // 定义地图边界的顶点
-        Point mapVertex1 = new Point(0, 0);
-        Point mapVertex2 = new Point(200, 0);
-        Point mapVertex3 = new Point(200, 200);
-        Point mapVertex4 = new Point(0, 200);
-        //创建地图边界顶点集合
-        List<Point> boundaryVertices = new ArrayList<>();
-        boundaryVertices.add(mapVertex1);
-        boundaryVertices.add(mapVertex2);
-        boundaryVertices.add(mapVertex3);
-        boundaryVertices.add(mapVertex4);
+    public static void generateMapLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines, Map map) {
 
-        //获取最大凸多边形障碍物顶点集合
+        //获取外围顶点集合
         List<Point> mergeConvexPolygons = tools.mergeConvexPolygons(obstacles);
 
+        //每个顶点的链接线都根据它们的长度从最短到最长存储在集合lines中
+        List<List<LinkLine>> lines = new ArrayList<>();
+        // 生成每个顶点与地图边界之间的链接线
         for (Point vertex : mergeConvexPolygons) {
-            // 获取距离已知顶点最近的地图边界点
-            Point nearestBoundaryPoint = tools.getNearestBoundaryPoint(vertex, boundaryVertices);
-            // 生成与地图上边界的连线
-            LinkLine topLinkLine = new LinkLine(vertex, nearestBoundaryPoint);
-            linkLines.add(topLinkLine);
-        }
-    }
+            List<LinkLine> vertexLines = new ArrayList<>();
+            // 计算水平线和垂直线与边界相交的四个点
+            Point horizontalIntersectionTop = new Point(vertex.getX(), map.getTopLeft().getY());//(x,200)
+            Point horizontalIntersectionBottom = new Point(vertex.getX(), map.getBottomLeft().getY());//(x,0)
+            Point verticalIntersectionLeft = new Point(map.getBottomLeft().getX(), vertex.getY());//(0,y)
+            Point verticalIntersectionRight = new Point(map.getBottomRight().getX(), vertex.getY());//(200,y)
 
-
-    /**
-     * 将Link线合集中经过障碍物的删除
-     *
-     * @param obstacles 障碍物集合
-     * @param linkLines MakLink线集合
-     * @return
-     */
-    public static void removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
-        Iterator<LinkLine> iterator = linkLines.iterator();
-
-        //遍历linkLines列表中的每条链接线linkLine
-        while (iterator.hasNext()) {
-            LinkLine linkLine = iterator.next();
-            //获取链接线的起点p1和终点q1。
-            Point p1 = linkLine.getStartPoint();
-            Point q1 = linkLine.getEndPoint();
-            //设置一个布尔标志flag，用于指示链接线是否经过障碍物。
-            boolean flag = false;//默认不经过障碍物
-
-            //遍历obstacles列表中的每个障碍物obstacle
-            for (Obstacle obstacle : obstacles) {
-                //获取障碍物的两两顶点组成的顶点集合vertexPairs。
-                List<List<Point>> vertexPairs = obstacle.getVertexPairs();
-
-                for (List<Point> list : vertexPairs) {
-                    //两个顶点p3和q3，表示障碍物的一条边缘线段。
-                    Point p3 = list.get(0);
-                    Point q3 = list.get(1);
-
-                    //检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交，
-                    if (tools.areSegmentsIntersecting(p1, q1, p3, q3)) {
-                        flag = true;
-                        break;
-                    }
+            // 生成与地图边界的连线
+            LinkLine topLinkLine = new LinkLine(vertex, horizontalIntersectionTop);//和上边界的链接线
+            LinkLine bottomLinkLine = new LinkLine(vertex, horizontalIntersectionBottom);//和下边界的链接线
+            LinkLine leftLinkLine = new LinkLine(vertex, verticalIntersectionLeft);//和左边界的链接线
+            LinkLine rightLinkLine = new LinkLine(vertex, verticalIntersectionRight);//和右边界的链接线
+            vertexLines.add(topLinkLine);
+            vertexLines.add(bottomLinkLine);
+            vertexLines.add(leftLinkLine);
+            vertexLines.add(rightLinkLine);
+            List<LinkLine> removeIntersectLinkLines = tools.removeIntersectLinkLines(obstacles, vertexLines);//去除经过障碍物的链接线
+            // 按照链接线长度从小到大排序
+            Collections.sort(removeIntersectLinkLines, new Comparator<LinkLine>() {
+                @Override
+                public int compare(LinkLine line1, LinkLine line2) {
+                    // 按照链接线长度进行比较
+                    double length1 = line1.getLength();
+                    double length2 = line2.getLength();
+                    return Double.compare(length1, length2);
                 }
+            });
 
-                if (flag) {
-                    //如果标志flag为true，则表示链接线与障碍物边缘相交，直接退出循环。
+            lines.add(removeIntersectLinkLines);
+        }
+
+        //生成每个顶点所在的两条边
+        List<EdgeLine> edgeLines = tools.generateEdgeLines(mergeConvexPolygons);
+
+        //生成外围顶点与地图边界之间的最佳MakLink线
+        List<LinkLine> finalResult = new ArrayList<>();
+        for (int i = 0; i < mergeConvexPolygons.size(); i++) {
+            int a;
+            int b;
+            if (i == 0) {
+                a = mergeConvexPolygons.size() - 1;
+                b = i;
+            } else {
+                a = i - 1;
+                b = i;
+            }
+            EdgeLine edgeLine1 = edgeLines.get(a);//当前顶点所在的障碍物边1
+            EdgeLine edgeLine2 = edgeLines.get(b);//当前顶点所在的障碍物边2
+
+            for (int j = 0; j < lines.get(i).size(); j++) {
+                List<LinkLine> result = new ArrayList<>();//候选MakLink线列表
+                LinkLine linkLine = lines.get(i).get(j);//从集合lines中每个点所在的最短的链接线开始判断
+                if (tools.areVertexAnglesLessThan180(linkLine, edgeLine1, edgeLine2)) {
+                    //如果两个角度都小于或等于180度，则该线将被确定为最佳MakLink线，加入最终结果集
+                    finalResult.add(linkLine);
+                    //直接退出循环，忽略来自该顶点的其他线
                     break;
+                } else {
+                    //否则，将该线添加到属于当前顶点的候选MakLink线列表中。
+                    result.add(linkLine);
+                }
+
+                if (result.size() == lines.get(i).size()) {
+                    //如果当前顶点的所有链接线都不是最佳MakLink线，就把候选MakLink线加入最终结果集
+                    finalResult.addAll(result);
                 }
             }
-
-            if (flag) {
-                //如果标志flag为true，则从linkLines列表中移除当前的链接线linkLine。
-                iterator.remove();
-            }
         }
+
+        linkLines.addAll(finalResult);
     }
+
 
     /**
      * 生成最终的MakLink线
@@ -264,9 +276,15 @@ public class MaklinkLinkGenerator {
         Obstacle obstacleFour = createObstacle(obstaclePoints4);
         obstacles.add(obstacleFour);     //加入合集
 
+        //定义地图边界点
+        Point mapVertex1 = new Point(0, 0);
+        Point mapVertex2 = new Point(0, 200);
+        Point mapVertex3 = new Point(200, 200);
+        Point mapVertex4 = new Point(200, 0);
+        Map map = new Map(mapVertex1, mapVertex2, mapVertex3, mapVertex4);
+
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
-        generateMapLinkLines(obstacles, linkLines);   // 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
-        removeIntersectLinkLines(obstacles, linkLines); // 将Link线合集中经过障碍物的删除
+        generateMapLinkLines(obstacles, linkLines, map);   // 生成障碍物外围顶点与地图边界之间的最佳MakLink线
 //        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
         tools.printLinkLines(linkLines);
     }
