@@ -20,5 +20,10 @@ public class LinkLine {
         double yDiff = endPoint.getY() - startPoint.getY();
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
     }
+    public Point getMidPoint() {
+        double midX = (startPoint.getX() + endPoint.getX()) / 2.0;
+        double midY = (startPoint.getY() + endPoint.getY()) / 2.0;
+        return new Point(midX, midY);
+    }
 
 }

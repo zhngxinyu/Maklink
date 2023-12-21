@@ -274,7 +274,7 @@ public class Tools {
     }
 
     /**
-     * 获取障碍物顶点围成的边缘线段集合
+     * 生成障碍物顶点所在的两条障碍物边缘
      *
      * @param mergeConvexPolygons
      * @return
@@ -295,41 +295,157 @@ public class Tools {
     }
 
     /**
-     * 判断由当前链接线连接产生的当前顶点的外角
+     * 判断当前顶点的链接线和顶点所在的两条障碍物边缘的夹角是否都小于180°
      *
      * @param linkLine  链接线
-     * @param edgeLine1 顶点所在的障碍物边缘
-     * @param edgeLine2 顶点所在的障碍物边缘
+     * @param edgeLine1 顶点所在的障碍物边缘1
+     * @param edgeLine2 顶点所在的障碍物边缘2
      * @return 如果两个角度中的每一个都小于180度返回true
      */
     public static boolean areVertexAnglesLessThan180(LinkLine linkLine, EdgeLine edgeLine1, EdgeLine edgeLine2) {
-        // 获取linkLine的向量表示
-        double vectorX = linkLine.getEndPoint().getX() - linkLine.getStartPoint().getX();
-        double vectorY = linkLine.getEndPoint().getY() - linkLine.getStartPoint().getY();
-        // 获取edgeLine1的向量表示
-        double vector1X = edgeLine1.getEndPoint().getX() - edgeLine1.getStartPoint().getX();
-        double vector1Y = edgeLine1.getEndPoint().getY() - edgeLine1.getStartPoint().getY();
+        Point startPoint = linkLine.getStartPoint();
+        Point startPoint1 = edgeLine1.getStartPoint();
+        Point endPoint1 = edgeLine1.getEndPoint();
+        Point startPoint2 = edgeLine2.getStartPoint();
+        Point endPoint2 = edgeLine2.getEndPoint();
 
-        // 获取edgeLine2的向量表示
-        double vector2X = edgeLine2.getEndPoint().getX() - edgeLine2.getStartPoint().getX();
-        double vector2Y = edgeLine2.getEndPoint().getY() - edgeLine2.getStartPoint().getY();
+        // 调用方法获取结果
+        List<Point> result = findDistinctPoints(startPoint, startPoint1, endPoint1, startPoint2, endPoint2);
+        Point point1 = result.get(0);
+        Point point2 = result.get(1);
+        double A = linkLine.getEndPoint().getY() - linkLine.getStartPoint().getY();
+        double B = linkLine.getStartPoint().getX() - linkLine.getEndPoint().getX();
+        double C = linkLine.getEndPoint().getX() * linkLine.getStartPoint().getY() - linkLine.getStartPoint().getX() * linkLine.getEndPoint().getY();
 
-        // 计算linkLine和edgeLine1，edgeLine2之间的夹角（弧度）
-        double angle = Math.atan2(vectorY, vectorX);
-        double angle1 = Math.atan2(vector1Y, vector1X);
-        double angle2 = Math.atan2(vector2Y, vector2X);
+        double d1 = (A * point1.getX() + B * point1.getY() + C) / Math.sqrt(A * A + B * B);
+        double d2 = (A * point2.getX() + B * point2.getY() + C) / Math.sqrt(A * A + B * B);
 
-        // 将角度转换为正值
-        angle = angle >= 0 ? angle : (2 * Math.PI + angle);
-        angle1 = angle1 >= 0 ? angle1 : (2 * Math.PI + angle1);
-        angle2 = angle2 >= 0 ? angle2 : (2 * Math.PI + angle2);
+        if (d1 * d2 == 0) {
+            return false;
+        } else if (d1 * d2 > 0) {
+            return false;
+        } else {
+            return true;
+        }
 
-        // 计算两个外角的夹角（弧度）
-        double angleDifference1 = Math.abs(angle - angle1);
-        double angleDifference2 = Math.abs(angle - angle2);
+    }
 
-        // 判断夹角是否小于180度
-        return angleDifference1 < Math.PI && angleDifference2 < Math.PI;
+    /**
+     * 返回两个与 startPoint 不相等的点
+     *
+     * @param startPoint  链接线起点
+     * @param startPoint1 障碍物边缘起点1
+     * @param endPoint1   障碍物终点1
+     * @param startPoint2 障碍物边缘起点2
+     * @param endPoint2   障碍物终点2
+     * @return
+     */
+    public static List<Point> findDistinctPoints(Point startPoint, Point startPoint1, Point endPoint1, Point startPoint2, Point endPoint2) {
+        List<Point> distinctPoints = new ArrayList<>();
+
+        if (!startPoint.equals(startPoint1)) {
+            distinctPoints.add(startPoint1);
+        }
+
+        if (!startPoint.equals(endPoint1)) {
+            distinctPoints.add(endPoint1);
+        }
+
+        if (!startPoint.equals(startPoint2)) {
+            distinctPoints.add(startPoint2);
+        }
+
+        if (!startPoint.equals(endPoint2)) {
+            distinctPoints.add(endPoint2);
+        }
+
+        return distinctPoints;
+    }
+
+    /**
+     * 构建邻接矩阵
+     *
+     * @param midPoints 链接点集合 midPoints
+     * @return
+     */
+    public static int[][] buildAdjacencyMatrix(List<Point> midPoints, List<Obstacle> obstacles) {
+        int size = midPoints.size();
+        int[][] adjacencyMatrix = new int[size][size];
+
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                // 判断顶点是否邻接，这里使用简单的距离判断，如果两个顶点之间的距离小于等于阈值，认为它们是邻接的
+                PathLine pathLine = new PathLine(midPoints.get(i), midPoints.get(j));
+                // 调用方法进行判断
+                boolean isBlocked = isPathBlocked(obstacles, pathLine);
+                if (isBlocked) {
+                    adjacencyMatrix[i][j] = 0;// 表示不可以连接
+                } else {
+                    double distance = calculateDistance(midPoints.get(i), midPoints.get(j));
+                    adjacencyMatrix[i][j] = 1;
+                }
+
+            }
+        }
+
+        return adjacencyMatrix;
+    }
+
+    /**
+     * 计算两点之间的距离
+     *
+     * @param p1 点1
+     * @param p2 点2
+     * @return
+     */
+    public static double calculateDistance(Point p1, Point p2) {
+        double dx = p2.getX() - p1.getX();
+        double dy = p2.getY() - p1.getY();
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * 判断路径线段是否经过所有障碍物
+     *
+     * @param obstacles 障碍物集合
+     * @param pathLine  路径线
+     * @return
+     */
+    public static boolean isPathBlocked(List<Obstacle> obstacles, PathLine pathLine) {
+        for (Obstacle obstacle : obstacles) {
+            if (isIntersecting(pathLine, obstacle)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 判断路径线段和障碍物是否相交
+     *
+     * @param pathLine 路径线
+     * @param obstacle 障碍物
+     * @return
+     */
+    public static boolean isIntersecting(PathLine pathLine, Obstacle obstacle) {
+        //获取链接线的起点p1和终点q1。
+        Point p1 = pathLine.getStartPoint();
+        Point q1 = pathLine.getEndPoint();
+        //设置一个布尔标志flag，用于指示链接线是否经过障碍物。
+        boolean flag = false;//默认不经过障碍物
+        //获取障碍物的两两顶点组成的顶点集合vertexPairs。
+        List<List<Point>> vertexPairs = obstacle.getVertexPairs();
+        for (List<Point> list : vertexPairs) {
+            //两个顶点p3和q3，表示障碍物的一条边缘线段。
+            Point p3 = list.get(0);
+            Point q3 = list.get(1);
+            //检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交，
+            if (areSegmentsIntersecting(p1, q1, p3, q3)) {
+                flag = true;
+                break;
+            }
+        }
+        return flag;
     }
 
 }
