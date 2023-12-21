@@ -295,7 +295,7 @@ public class Tools {
     }
 
     /**
-     * 检查由当前链接线连接产生的当前顶点的外角
+     * 判断由当前链接线连接产生的当前顶点的外角
      *
      * @param linkLine  链接线
      * @param edgeLine1 顶点所在的障碍物边缘
