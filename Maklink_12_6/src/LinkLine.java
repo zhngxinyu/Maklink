@@ -21,7 +21,4 @@ public class LinkLine {
         return Math.sqrt(xDiff * xDiff + yDiff * yDiff);
     }
 
-    public boolean intersects(LinkLine otherLine) {
-        return false;
-    }
 }

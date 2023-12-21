@@ -35,101 +35,102 @@ public class MaklinkLinkGenerator {
                 }
             }
         }
+        List<LinkLine> lines = new ArrayList<>();
+        lines.addAll(uniqueLinkLines);
+        List<LinkLine> removeIntersectLinkLines = tools.removeIntersectLinkLines(obstacles, lines);  //去除经过障碍物的链接线
 
-        linkLines.addAll(uniqueLinkLines);
+//        linkLines.addAll(uniqueLinkLines);//初始链接线
+        linkLines.addAll(removeIntersectLinkLines);//去除经过障碍物后的链接线
     }
 
     /**
-     * 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
+     * 生成障碍物外围顶点与地图边界之间的最佳MakLink线
      *
      * @param obstacles 障碍物合集
      * @param linkLines 所有MakLink线合集
+     * @param map       地图边界
      */
-    public static void generateMapLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
-        // 定义地图边界的顶点
-        Point mapVertex1 = new Point(0, 0);
-        Point mapVertex2 = new Point(200, 0);
-        Point mapVertex3 = new Point(200, 200);
-        Point mapVertex4 = new Point(0, 200);
-        //创建地图边界顶点集合
-        List<Point> boundaryVertices = new ArrayList<>();
-        boundaryVertices.add(mapVertex1);
-        boundaryVertices.add(mapVertex2);
-        boundaryVertices.add(mapVertex3);
-        boundaryVertices.add(mapVertex4);
+    public static void generateMapLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines, Map map) {
 
-        //获取最大凸多边形障碍物顶点集合
+        //获取外围顶点集合
         List<Point> mergeConvexPolygons = tools.mergeConvexPolygons(obstacles);
 
+        //每个顶点的链接线都根据它们的长度从最短到最长存储在集合lines中
+        List<List<LinkLine>> lines = new ArrayList<>();
+        // 生成每个顶点与地图边界之间的链接线
         for (Point vertex : mergeConvexPolygons) {
-            // 获取距离已知顶点最近的地图边界点
-            Point nearestBoundaryPoint = tools.getNearestBoundaryPoint(vertex, boundaryVertices);
-            // 生成与地图上边界的连线
-            LinkLine topLinkLine = new LinkLine(vertex, nearestBoundaryPoint);
-            linkLines.add(topLinkLine);
-        }
-    }
+            List<LinkLine> vertexLines = new ArrayList<>();
+            // 计算水平线和垂直线与边界相交的四个点
+            Point horizontalIntersectionTop = new Point(vertex.getX(), map.getTopLeft().getY());//(x,200)
+            Point horizontalIntersectionBottom = new Point(vertex.getX(), map.getBottomLeft().getY());//(x,0)
+            Point verticalIntersectionLeft = new Point(map.getBottomLeft().getX(), vertex.getY());//(0,y)
+            Point verticalIntersectionRight = new Point(map.getBottomRight().getX(), vertex.getY());//(200,y)
 
-
-
-    /**
-     * 将Link线合集中经过障碍物的删除
-     *
-     * @param obstacles 障碍物集合
-     * @param linkLines MakLink线集合
-     * @return
-     */
-    public static List<LinkLine> removeIntersectLinkLines(List<Obstacle> obstacles, List<LinkLine> linkLines) {
-        List<LinkLine> disjointLinkLines = new ArrayList<>();
-
-        //遍历链接线
-        for (LinkLine linkLine : linkLines) {
-            Point p1 = linkLine.getStartPoint();//链接线起点
-            Point q1 = linkLine.getEndPoint();//链接线终点
-            boolean flag = true;//默认不经过障碍物
-            //遍历障碍物检查链接线是否经过障碍物边缘
-            for (Obstacle obstacle : obstacles) {
-                //获取一个障碍物两两顶点组成的顶点集合
-                List<List<Point>> vertexPairs = obstacle.getVertexPairs();
-                //遍历障碍物两两顶点组成的顶点集合
-                for (List<Point> list : vertexPairs) {
-                    Point p2 = list.get(0);
-                    Point q2 = list.get(1);
-                    // 检查端点p2, q2是否在链接线(p1, q1)端点之间
-                    if (tools.isPointOnLineSegment(p1, q1, p2) || tools.isPointOnLineSegment(p1, q1, q2)) {
-                        flag = false;
-                        break;
-                    }
+            // 生成与地图边界的连线
+            LinkLine topLinkLine = new LinkLine(vertex, horizontalIntersectionTop);//和上边界的链接线
+            LinkLine bottomLinkLine = new LinkLine(vertex, horizontalIntersectionBottom);//和下边界的链接线
+            LinkLine leftLinkLine = new LinkLine(vertex, verticalIntersectionLeft);//和左边界的链接线
+            LinkLine rightLinkLine = new LinkLine(vertex, verticalIntersectionRight);//和右边界的链接线
+            vertexLines.add(topLinkLine);
+            vertexLines.add(bottomLinkLine);
+            vertexLines.add(leftLinkLine);
+            vertexLines.add(rightLinkLine);
+            List<LinkLine> removeIntersectLinkLines = tools.removeIntersectLinkLines(obstacles, vertexLines);//去除经过障碍物的链接线
+            // 按照链接线长度从小到大排序
+            Collections.sort(removeIntersectLinkLines, new Comparator<LinkLine>() {
+                @Override
+                public int compare(LinkLine line1, LinkLine line2) {
+                    // 按照链接线长度进行比较
+                    double length1 = line1.getLength();
+                    double length2 = line2.getLength();
+                    return Double.compare(length1, length2);
                 }
-                if (!flag) {//端点p2, q2在链接线(p1, q1)端点之间直接退出循环
-                    break;
-                }
+            });
 
-                //获取障碍物边缘线段组成的顶点列表
-                List<List<Point>> polygonEdges = obstacle.getPolygonEdges();
-                //遍历障碍物边缘
-                for (List<Point> list : polygonEdges) {
-                    Point p3 = list.get(0);
-                    Point q3 = list.get(1);
-                    // 检查链接线(p1, q1)和障碍物边缘(p3, q3)是否相交
-                    if (tools.areSegmentsIntersecting(p1, q1, p3, q3)) {
-                        flag = false;
-                        break;
-                    }
-                }
-                if (!flag) { //相交直接退出检查
-                    break;
-                }
-            }
-
-            if (flag) {
-                //符合，加入disjointLinkLines集合
-                disjointLinkLines.add(linkLine);
-            }
+            lines.add(removeIntersectLinkLines);
         }
 
-        return disjointLinkLines;
+        //生成每个顶点所在的两条边
+        List<EdgeLine> edgeLines = tools.generateEdgeLines(mergeConvexPolygons);
+
+        //生成外围顶点与地图边界之间的最佳MakLink线
+        List<LinkLine> finalResult = new ArrayList<>();
+        for (int i = 0; i < mergeConvexPolygons.size(); i++) {
+            int a;
+            int b;
+            if (i == 0) {
+                a = mergeConvexPolygons.size() - 1;
+                b = i;
+            } else {
+                a = i - 1;
+                b = i;
+            }
+            EdgeLine edgeLine1 = edgeLines.get(a);//当前顶点所在的障碍物边1
+            EdgeLine edgeLine2 = edgeLines.get(b);//当前顶点所在的障碍物边2
+
+            for (int j = 0; j < lines.get(i).size(); j++) {
+                List<LinkLine> result = new ArrayList<>();//候选MakLink线列表
+                LinkLine linkLine = lines.get(i).get(j);//从集合lines中每个点所在的最短的链接线开始判断
+                if (tools.areVertexAnglesLessThan180(linkLine, edgeLine1, edgeLine2)) {
+                    //如果两个角度都小于或等于180度，则该线将被确定为最佳MakLink线，加入最终结果集
+                    finalResult.add(linkLine);
+                    //直接退出循环，忽略来自该顶点的其他线
+                    break;
+                } else {
+                    //否则，将该线添加到属于当前顶点的候选MakLink线列表中。
+                    result.add(linkLine);
+                }
+
+                if (result.size() == lines.get(i).size()) {
+                    //如果当前顶点的所有链接线都不是最佳MakLink线，就把候选MakLink线加入最终结果集
+                    finalResult.addAll(result);
+                }
+            }
+        }
+
+        linkLines.addAll(finalResult);
     }
+
 
     /**
      * 生成最终的MakLink线
@@ -226,13 +227,16 @@ public class MaklinkLinkGenerator {
 
     public static void main(String[] args) {
         List<Obstacle> obstacles = new ArrayList<>();   //障碍物合集
-
         // 多边形障碍物的顶点列表-->菱形1
         List<Point> obstaclePoints1 = new ArrayList<>();
         obstaclePoints1.add(new Point(40, 140));
         obstaclePoints1.add(new Point(60, 160));
         obstaclePoints1.add(new Point(100, 140));
         obstaclePoints1.add(new Point(60, 120));
+//        obstaclePoints1.add(new Point(40, 40));
+//        obstaclePoints1.add(new Point(60, 60));
+//        obstaclePoints1.add(new Point(60, 60));
+//        obstaclePoints1.add(new Point(60, 40));
         Obstacle obstacleOne = createObstacle(obstaclePoints1);
         obstacles.add(obstacleOne);     //加入合集
 
@@ -242,31 +246,48 @@ public class MaklinkLinkGenerator {
         obstaclePoints2.add(new Point(30, 40));
         obstaclePoints2.add(new Point(80, 80));
         obstaclePoints2.add(new Point(100, 40));
+//        obstaclePoints2.add(new Point(100, 30));
+//        obstaclePoints2.add(new Point(80, 50));
+//        obstaclePoints2.add(new Point(140, 80));
+//        obstaclePoints2.add(new Point(160, 60));
         Obstacle obstacleTwo = createObstacle(obstaclePoints2);
         obstacles.add(obstacleTwo);     //加入合集
 
-//        // 多边形障碍物的顶点列表-->菱形3
-//        List<Point> obstaclePoints3 = new ArrayList<>();
-//        obstaclePoints3.add(new Point(120, 160));
-//        obstaclePoints3.add(new Point(140, 100));
-//        obstaclePoints3.add(new Point(180, 170));
-//        obstaclePoints3.add(new Point(165, 180));
-//        Obstacle obstacleThree = createObstacle(obstaclePoints3);
-//        obstacles.add(obstacleThree);     //加入合集
-//
-//        // 多边形障碍物的顶点列表-->三角形
-//        List<Point> obstaclePoints4 = new ArrayList<>();
-//        obstaclePoints4.add(new Point(120, 40));
-//        obstaclePoints4.add(new Point(170, 40));
-//        obstaclePoints4.add(new Point(140, 80));
-//        Obstacle obstacleFour = createObstacle(obstaclePoints4);
-//        obstacles.add(obstacleFour);     //加入合集
+        // 多边形障碍物的顶点列表-->菱形3
+        List<Point> obstaclePoints3 = new ArrayList<>();
+        obstaclePoints3.add(new Point(120, 160));
+        obstaclePoints3.add(new Point(140, 100));
+        obstaclePoints3.add(new Point(180, 170));
+        obstaclePoints3.add(new Point(165, 180));
+//        obstaclePoints3.add(new Point(50, 80));
+//        obstaclePoints3.add(new Point(40, 100));
+//        obstaclePoints3.add(new Point(50, 120));
+//        obstaclePoints3.add(new Point(60, 100));
+        Obstacle obstacleThree = createObstacle(obstaclePoints3);
+        obstacles.add(obstacleThree);     //加入合集
+
+        // 多边形障碍物的顶点列表-->三角形
+        List<Point> obstaclePoints4 = new ArrayList<>();
+        obstaclePoints4.add(new Point(120, 40));
+        obstaclePoints4.add(new Point(170, 40));
+        obstaclePoints4.add(new Point(140, 80));
+//        obstaclePoints4.add(new Point(110, 100));
+//        obstaclePoints4.add(new Point(130, 140));
+//        obstaclePoints4.add(new Point(160, 100));
+        Obstacle obstacleFour = createObstacle(obstaclePoints4);
+        obstacles.add(obstacleFour);     //加入合集
+
+        //定义地图边界点
+        Point mapVertex1 = new Point(0, 0);
+        Point mapVertex2 = new Point(0, 200);
+        Point mapVertex3 = new Point(200, 200);
+        Point mapVertex4 = new Point(200, 0);
+        Map map = new Map(mapVertex1, mapVertex2, mapVertex3, mapVertex4);
 
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
-        generateMapLinkLines(obstacles, linkLines);   // 生成最大凸多边形障碍物顶点与地图边界之间的最短垂直连线
-        List<LinkLine> linkLines1 = removeIntersectLinkLines(obstacles, linkLines); // 生成不经过障碍物的Link线
-        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
-//        printLinkLines(finalLinkLines);
+        generateMapLinkLines(obstacles, linkLines, map);   // 生成障碍物外围顶点与地图边界之间的最佳MakLink线
+//        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
+        tools.printLinkLines(linkLines);
     }
 
 

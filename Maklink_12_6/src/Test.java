@@ -1,3 +1,6 @@
+import java.util.ArrayList;
+import java.util.List;
+
 public class Test {
 
     static boolean areSegmentsIntersecting(Point p1, Point p2, Point p3, Point p4) {
