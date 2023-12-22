@@ -1,3 +1,6 @@
+/**
+ * 顶点对应的两条障碍物边缘线段
+ */
 public class EdgeLine {
     private Point startPoint;
     private Point endPoint;

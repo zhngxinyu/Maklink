@@ -1,3 +1,6 @@
+/**
+ * 连接起始点和MakLink中点的路径线段
+ */
 public class PathLine {
     private Point startPoint;
     private Point endPoint;

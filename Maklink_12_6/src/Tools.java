@@ -362,6 +362,17 @@ public class Tools {
         return distinctPoints;
     }
 
+    public static Point[] buildVertex(List<Point> midPoints) {
+        int size = midPoints.size();
+
+        Point[] vertex = new Point[size];
+        for (int i = 0; i < size; i++) {
+            vertex[i] = midPoints.get(i);
+        }
+        return vertex;
+    }
+
+
     /**
      * 构建邻接矩阵
      *
@@ -379,10 +390,12 @@ public class Tools {
                 // 调用方法进行判断
                 boolean isBlocked = isPathBlocked(obstacles, pathLine);
                 if (isBlocked) {
-                    adjacencyMatrix[i][j] = 0;// 表示不可以连接
+                    final int N = 65535;// 表示不可以连接
+                    adjacencyMatrix[i][j] = N;// 表示不可以连接
                 } else {
                     double distance = calculateDistance(midPoints.get(i), midPoints.get(j));
-                    adjacencyMatrix[i][j] = 1;
+                    int Value = (int) distance;
+                    adjacencyMatrix[i][j] = Value;
                 }
 
             }
