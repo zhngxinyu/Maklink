@@ -2,9 +2,8 @@ import java.util.*;
 
 public class MaklinkLinkGenerator {
     private static List<LinkLine> linkLines = new ArrayList<>();        //所有连接线合集
-
+    private static List<Obstacle> obstacles = new ArrayList<>();        //障碍物合集
     private static Tools tools;     //引入工具类
-
     private static int test;     //引入工具类
     public static Obstacle createObstacle(List<Point> vertices) {
         return new Obstacle(vertices);
@@ -226,7 +225,6 @@ public class MaklinkLinkGenerator {
     }
 
     public static void main(String[] args) {
-        List<Obstacle> obstacles = new ArrayList<>();   //障碍物合集
 
         /**
          * //测试正方形
@@ -322,9 +320,12 @@ public class MaklinkLinkGenerator {
         //生成MakLink链接线
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
         generateMapLinkLines(obstacles, linkLines, map);   // 生成障碍物外围顶点与地图边界之间的最佳MakLink线
-//        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
+        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines);// 生成最终的MakLink线
 //        tools.printLinkLines(linkLines);
-
+        tools.associateLinkLinesWithObstacles(obstacles,linkLines);
+//        List<Point> vertices = obstacles.get(0).getVertices();
+//        Point point = vertices.get(0);
+//        tools.calculateAngles(point, vertices);
         //求所有节点
         List<Point> midPoints = new ArrayList<>(); //所有MakLink线的中点集合
         Point start = new Point(20, 180);

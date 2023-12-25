@@ -3,6 +3,28 @@ import java.util.*;
 public class Tools {
 
     /**
+     * 将对应的链接线存入障碍物合集中的障碍物的点中
+     *
+     * @param obstacles 障碍物集合
+     * @param linkLines MakLink线集合
+     * @return
+     */
+    public static void associateLinkLinesWithObstacles(List<Obstacle> obstacles, List<LinkLine> linkLines) {
+        for (LinkLine line : linkLines) {
+            Point startPoint = line.getStartPoint();
+
+            for (Obstacle obstacle : obstacles) {
+                List<Point> obstacleVertices = obstacle.getVertices();
+
+                // 检查起点是否与障碍物的顶点重合
+                if (obstacleVertices.contains(startPoint)) {
+                    startPoint.addLinkLine(line);
+                    break; // 已经找到重合的障碍物，跳出内层循环
+                }
+            }
+        }
+    }
+    /**
      * 将Link线合集中经过障碍物的删除
      *
      * @param obstacles 障碍物集合

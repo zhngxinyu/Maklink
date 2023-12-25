@@ -1,3 +1,4 @@
+import java.util.*;
 /**
  * MakLink线
  */
@@ -5,6 +6,7 @@ public class LinkLine {
     private Point startPoint;
     private Point endPoint;
 
+    private List<Double> vList;
     public LinkLine(Point startPoint, Point endPoint) {
         this.startPoint = startPoint;
         this.endPoint = endPoint;
