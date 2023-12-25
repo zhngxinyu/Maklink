@@ -107,9 +107,9 @@ public class MaklinkLinkGenerator {
             }
             EdgeLine edgeLine1 = edgeLines.get(a);//当前顶点所在的障碍物边1
             EdgeLine edgeLine2 = edgeLines.get(b);//当前顶点所在的障碍物边2
+            List<LinkLine> result = new ArrayList<>();//重置候选MakLink线列表
 
             for (int j = 0; j < lines.get(i).size(); j++) {
-                List<LinkLine> result = new ArrayList<>();//候选MakLink线列表
                 LinkLine linkLine = lines.get(i).get(j);//从集合lines中每个点所在的最短的链接线开始判断
                 if (tools.areVertexAnglesLessThan180(linkLine, edgeLine1, edgeLine2)) {
                     //如果两个角度都小于或等于180度，则该线将被确定为最佳MakLink线，加入最终结果集
@@ -227,16 +227,24 @@ public class MaklinkLinkGenerator {
 
     public static void main(String[] args) {
         List<Obstacle> obstacles = new ArrayList<>();   //障碍物合集
+
+        /**
+         * //测试正方形
+         * //        List<Point> obstaclePoints1 = new ArrayList<>();
+         * //        obstaclePoints1.add(new Point(50, 50));
+         * //        obstaclePoints1.add(new Point(50, 150));
+         * //        obstaclePoints1.add(new Point(150, 150));
+         * //        obstaclePoints1.add(new Point(150, 50));
+         * //        Obstacle obstacleOne = createObstacle(obstaclePoints1);
+         * //        obstacles.add(obstacleOne);     //加入合集
+         */
+
         // 多边形障碍物的顶点列表-->菱形1
         List<Point> obstaclePoints1 = new ArrayList<>();
         obstaclePoints1.add(new Point(40, 140));
         obstaclePoints1.add(new Point(60, 160));
         obstaclePoints1.add(new Point(100, 140));
         obstaclePoints1.add(new Point(60, 120));
-//        obstaclePoints1.add(new Point(40, 40));
-//        obstaclePoints1.add(new Point(60, 60));
-//        obstaclePoints1.add(new Point(60, 60));
-//        obstaclePoints1.add(new Point(60, 40));
         Obstacle obstacleOne = createObstacle(obstaclePoints1);
         obstacles.add(obstacleOne);     //加入合集
 
@@ -246,10 +254,6 @@ public class MaklinkLinkGenerator {
         obstaclePoints2.add(new Point(30, 40));
         obstaclePoints2.add(new Point(80, 80));
         obstaclePoints2.add(new Point(100, 40));
-//        obstaclePoints2.add(new Point(100, 30));
-//        obstaclePoints2.add(new Point(80, 50));
-//        obstaclePoints2.add(new Point(140, 80));
-//        obstaclePoints2.add(new Point(160, 60));
         Obstacle obstacleTwo = createObstacle(obstaclePoints2);
         obstacles.add(obstacleTwo);     //加入合集
 
@@ -259,10 +263,6 @@ public class MaklinkLinkGenerator {
         obstaclePoints3.add(new Point(140, 100));
         obstaclePoints3.add(new Point(180, 170));
         obstaclePoints3.add(new Point(165, 180));
-//        obstaclePoints3.add(new Point(50, 80));
-//        obstaclePoints3.add(new Point(40, 100));
-//        obstaclePoints3.add(new Point(50, 120));
-//        obstaclePoints3.add(new Point(60, 100));
         Obstacle obstacleThree = createObstacle(obstaclePoints3);
         obstacles.add(obstacleThree);     //加入合集
 
@@ -271,11 +271,46 @@ public class MaklinkLinkGenerator {
         obstaclePoints4.add(new Point(120, 40));
         obstaclePoints4.add(new Point(170, 40));
         obstaclePoints4.add(new Point(140, 80));
-//        obstaclePoints4.add(new Point(110, 100));
-//        obstaclePoints4.add(new Point(130, 140));
-//        obstaclePoints4.add(new Point(160, 100));
         Obstacle obstacleFour = createObstacle(obstaclePoints4);
         obstacles.add(obstacleFour);     //加入合集
+
+
+        /**           //测试
+         // 多边形障碍物的顶点列表-->正方形1
+         List<Point> obstaclePoints1 = new ArrayList<>();
+         obstaclePoints1.add(new Point(40, 40));
+         obstaclePoints1.add(new Point(40, 60));
+         obstaclePoints1.add(new Point(60, 60));
+         obstaclePoints1.add(new Point(60, 40));
+         Obstacle obstacleOne = createObstacle(obstaclePoints1);
+         obstacles.add(obstacleOne);     //加入合集
+
+         //多边形障碍物的顶点列表-->菱形2
+         List<Point> obstaclePoints2 = new ArrayList<>();
+         obstaclePoints2.add(new Point(100, 30));
+         obstaclePoints2.add(new Point(80, 50));
+         obstaclePoints2.add(new Point(140, 80));
+         obstaclePoints2.add(new Point(160, 60));
+         Obstacle obstacleTwo = createObstacle(obstaclePoints2);
+         obstacles.add(obstacleTwo);     //加入合集
+
+         // 多边形障碍物的顶点列表-->菱形3
+         List<Point> obstaclePoints3 = new ArrayList<>();
+         obstaclePoints3.add(new Point(50, 80));
+         obstaclePoints3.add(new Point(40, 100));
+         obstaclePoints3.add(new Point(50, 120));
+         obstaclePoints3.add(new Point(60, 100));
+         Obstacle obstacleThree = createObstacle(obstaclePoints3);
+         obstacles.add(obstacleThree);     //加入合集
+
+         // 多边形障碍物的顶点列表-->三角形
+         List<Point> obstaclePoints4 = new ArrayList<>();
+         obstaclePoints4.add(new Point(110, 100));
+         obstaclePoints4.add(new Point(130, 140));
+         obstaclePoints4.add(new Point(160, 100));
+         Obstacle obstacleFour = createObstacle(obstaclePoints4);
+         obstacles.add(obstacleFour);     //加入合集
+         **/
 
         //定义地图边界点
         Point mapVertex1 = new Point(0, 0);
@@ -284,12 +319,34 @@ public class MaklinkLinkGenerator {
         Point mapVertex4 = new Point(200, 0);
         Map map = new Map(mapVertex1, mapVertex2, mapVertex3, mapVertex4);
 
+        //生成MakLink链接线
         generateLinkLines(obstacles, linkLines);     // 生成各障碍物顶点之间的link线
         generateMapLinkLines(obstacles, linkLines, map);   // 生成障碍物外围顶点与地图边界之间的最佳MakLink线
 //        List<LinkLine> finalLinkLines = generateFinalLinkLines(obstacles, linkLines1);// 生成最终的MakLink线
-        tools.printLinkLines(linkLines);
+//        tools.printLinkLines(linkLines);
+
+        //求所有节点
+        List<Point> midPoints = new ArrayList<>(); //所有MakLink线的中点集合
+        Point start = new Point(20, 180);
+        midPoints.add(start);
+        for (LinkLine linkLine : linkLines) {
+            Point midPoint = linkLine.getMidPoint();
+            midPoints.add(midPoint);
+        }
+        Point end = new Point(160, 90);
+        midPoints.add(end);
+        //创建顶点数组
+        Point[] vertex = tools.buildVertex(midPoints);
+        //创建邻接矩阵
+        int[][] matrix = tools.buildAdjacencyMatrix(midPoints, obstacles);
+        //创建 Graph对象
+        Graph graph = new Graph(vertex, matrix);
+        //测试, 看看图的邻接矩阵是否ok
+//        graph.showGraph();
+        //测试迪杰斯特拉算法
+        graph.dsj(0);//起点
+        //打印路径
+        graph.showDijkstra(vertex);
     }
-
-
 }
 

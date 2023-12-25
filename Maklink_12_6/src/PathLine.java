@@ -1,11 +1,11 @@
 /**
- * 顶点对应的两条障碍物边缘线段
+ * 连接起始点和MakLink中点的路径线段
  */
-public class EdgeLine {
+public class PathLine {
     private Point startPoint;
     private Point endPoint;
 
-    public EdgeLine(Point startPoint, Point endPoint) {
+    public PathLine(Point startPoint, Point endPoint) {
         this.startPoint = startPoint;
         this.endPoint = endPoint;
     }
@@ -17,5 +17,4 @@ public class EdgeLine {
     public Point getEndPoint() {
         return endPoint;
     }
-
 }
